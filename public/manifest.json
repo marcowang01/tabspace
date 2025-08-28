@@ -6,6 +6,26 @@
   "chrome_url_overrides": {
     "newtab": "index.html"
   },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Open TabSpace",
+    "default_icon": {
+      "16": "logo192.png",
+      "48": "logo192.png",
+      "128": "logo192.png"
+    }
+  },
+  "commands": {
+    "open-tabspace": {
+      "suggested_key": {
+        "default": "Ctrl+E",
+        "mac": "Command+E"
+      },
+      "description": "Open TabSpace"
+    }
+  },
   "icons": {
     "16": "logo192.png",
     "48": "logo192.png",
