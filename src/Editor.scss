@@ -75,6 +75,46 @@ span[data-time] {
   }
 }
 
+span[data-priority] {
+  padding: 0.15em 0.3em;
+  border-radius: 5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  position: relative;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  &::after {
+    visibility: hidden;
+    opacity: 0;
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--light);
+    padding: 0.15em 0.3em;
+    margin-bottom: 5px;
+    border-radius: 5px;
+    border: 1px solid var(--outlinegray);
+    white-space: nowrap;
+    font-weight: normal;
+    font-size: 0.9em;
+    text-transform: none;
+    transition: opacity 0.3s ease;
+  }
+
+  &:hover::after {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
 .has-focus {
   border-radius: 5px;
   background: var(--lightgray);

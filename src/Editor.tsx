@@ -9,6 +9,7 @@ import Typography from '@tiptap/extension-typography';
 import Blockquote from '@tiptap/extension-blockquote';
 import Image from '@tiptap/extension-image';
 import { TimedTask } from './tasks/TimedTask';
+import { PriorityMark } from './tasks/PriorityMark';
 import Placeholder from '@tiptap/extension-placeholder';
 import Link from '@tiptap/extension-link';
 import TaskItem from '@tiptap/extension-task-item';
@@ -121,6 +122,7 @@ const Editor = ({ setTasks }: IEditor) => {
       Typography,
       Image,
       TimedTask,
+      PriorityMark,
       TaskList,
       TaskItem.configure({
         nested: true,
