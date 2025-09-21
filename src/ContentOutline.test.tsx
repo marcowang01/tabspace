@@ -1,4 +1,6 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { JSONContent } from '@tiptap/react'
+import ContentOutline from './ContentOutline'
 
 // Extract the utility functions for testing
 const extractPriority = (text: string): number | undefined => {
@@ -924,5 +926,490 @@ describe('ContentOutline Sorting Integration', () => {
 
     expect(outline).toHaveLength(0)
     expect(sorted).toHaveLength(0)
+  })
+})
+
+// Mock TipTap Editor for scrolling tests
+const createMockEditor = (jsonContent: JSONContent) => {
+  const mockDom = document.createElement('div')
+  // Add the scrollIntoView method to the mock DOM element
+  mockDom.scrollIntoView = jest.fn()
+  
+  const mockView = {
+    dom: mockDom,
+    coordsAtPos: jest.fn((pos: number) => ({
+      top: pos * 20, // Mock: each position is 20px apart
+      left: 0,
+      right: 100,
+      bottom: pos * 20 + 20
+    }))
+  }
+
+  const mockState = {
+    doc: {
+      descendants: jest.fn((callback: (node: any, pos: number) => boolean | void) => {
+        // Mock document traversal
+        let pos = 0
+        const traverse = (node: JSONContent) => {
+          const result = callback(node, pos)
+          if (result === false) return false
+          pos++
+          if (node.content) {
+            for (const child of node.content) {
+              if (traverse(child) === false) return false
+            }
+          }
+        }
+        if (jsonContent.content) {
+          for (const node of jsonContent.content) {
+            if (traverse(node) === false) break
+          }
+        }
+      })
+    }
+  }
+
+  return {
+    getJSON: jest.fn(() => jsonContent),
+    on: jest.fn(),
+    off: jest.fn(),
+    view: mockView,
+    state: mockState
+  }
+}
+
+// Mock window.scrollTo
+const mockScrollTo = jest.fn()
+Object.defineProperty(window, 'scrollTo', {
+  value: mockScrollTo,
+  writable: true
+})
+
+// Mock window.pageYOffset
+Object.defineProperty(window, 'pageYOffset', {
+  value: 0,
+  writable: true,
+  configurable: true
+})
+
+describe('ContentOutline Scrolling Functionality', () => {
+  beforeEach(() => {
+    mockScrollTo.mockClear()
+    // Reset page offset
+    Object.defineProperty(window, 'pageYOffset', {
+      value: 0,
+      writable: true,
+      configurable: true
+    })
+  })
+
+  it('should scroll to correct position when clicking on a heading', async () => {
+    const doc: JSONContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'heading',
+          attrs: { level: 1 },
+          content: [{ type: 'text', text: 'Test Heading' }]
+        },
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text: 'Some content' }]
+        }
+      ]
+    }
+
+    const mockEditor = createMockEditor(doc)
+    render(<ContentOutline editor={mockEditor as any} />)
+
+    // Find and click the heading
+    const headingElement = screen.getByText('Test Heading')
+    fireEvent.click(headingElement)
+
+    await waitFor(() => {
+      expect(mockScrollTo).toHaveBeenCalledWith({
+        top: 0, // coords.top (0) + currentScrollTop (0) - 100 = -100, but Math.max(0, -100) = 0
+        behavior: 'smooth'
+      })
+    })
+  })
+
+  it('should scroll to correct position when clicking on a task item', async () => {
+    const doc: JSONContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'heading',
+          attrs: { level: 1 },
+          content: [{ type: 'text', text: 'Tasks' }]
+        },
+        {
+          type: 'taskList',
+          content: [
+            {
+              type: 'taskItem',
+              content: [
+                {
+                  type: 'paragraph',
+                  content: [{ type: 'text', text: 'p0 Important task' }]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+
+    const mockEditor = createMockEditor(doc)
+    render(<ContentOutline editor={mockEditor as any} />)
+
+    // First expand the Tasks section to see the task item
+    const tasksHeading = screen.getByText('Tasks')
+    const expandButton = tasksHeading.parentElement?.querySelector('.collapse-btn')
+    if (expandButton) {
+      fireEvent.click(expandButton)
+    }
+
+    await waitFor(() => {
+      expect(screen.getByText('p0 Important task')).toBeInTheDocument()
+    })
+
+    // Now find and click the task item
+    const taskElement = screen.getByText('p0 Important task')
+    fireEvent.click(taskElement)
+
+    await waitFor(() => {
+      expect(mockScrollTo).toHaveBeenCalled()
+      const callArgs = mockScrollTo.mock.calls[mockScrollTo.mock.calls.length - 1][0]
+      expect(callArgs.behavior).toBe('smooth')
+      expect(typeof callArgs.top).toBe('number')
+      expect(callArgs.top).toBeGreaterThanOrEqual(0) // Should never scroll above page
+    })
+  })
+
+  it('should account for current scroll position when scrolling', async () => {
+    // Mock current page scroll position
+    Object.defineProperty(window, 'pageYOffset', {
+      value: 500,
+      writable: true,
+      configurable: true
+    })
+
+    const doc: JSONContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'heading',
+          attrs: { level: 1 },
+          content: [{ type: 'text', text: 'Scrolled Heading' }]
+        }
+      ]
+    }
+
+    const mockEditor = createMockEditor(doc)
+    render(<ContentOutline editor={mockEditor as any} />)
+
+    const headingElement = screen.getByText('Scrolled Heading')
+    fireEvent.click(headingElement)
+
+    await waitFor(() => {
+      expect(mockScrollTo).toHaveBeenCalledWith({
+        top: 400, // currentScrollTop (500) + coords.top (0) - 100 = 400
+        behavior: 'smooth'
+      })
+    })
+  })
+
+  it('should handle scrolling to positions that would result in negative scroll', async () => {
+    // Mock a scenario where the target would be above the page
+    Object.defineProperty(window, 'pageYOffset', {
+      value: 50,
+      writable: true,
+      configurable: true
+    })
+
+    const doc: JSONContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'heading',
+          attrs: { level: 1 },
+          content: [{ type: 'text', text: 'Top Heading' }]
+        }
+      ]
+    }
+
+    const mockEditor = createMockEditor(doc)
+    render(<ContentOutline editor={mockEditor as any} />)
+
+    const headingElement = screen.getByText('Top Heading')
+    fireEvent.click(headingElement)
+
+    await waitFor(() => {
+      expect(mockScrollTo).toHaveBeenCalledWith({
+        top: 0, // Math.max(0, 50 + 0 - 100) = Math.max(0, -50) = 0
+        behavior: 'smooth'
+      })
+    })
+  })
+
+  it('should handle errors gracefully and use fallback scrolling', async () => {
+    const doc: JSONContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'heading',
+          attrs: { level: 1 },
+          content: [{ type: 'text', text: 'Error Heading' }]
+        }
+      ]
+    }
+
+    const mockEditor = createMockEditor(doc)
+    // Make initial coordsAtPos throw an error, but allow fallback to work
+    let callCount = 0
+    mockEditor.view.coordsAtPos.mockImplementation((pos: number) => {
+      callCount++
+      if (callCount === 1) {
+        throw new Error('Position out of bounds')
+      }
+      // Fallback call should succeed
+      return {
+        top: pos * 20,
+        left: 0,
+        right: 100,
+        bottom: pos * 20 + 20
+      }
+    })
+
+    const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {})
+
+    render(<ContentOutline editor={mockEditor as any} />)
+
+    const headingElement = screen.getByText('Error Heading')
+    fireEvent.click(headingElement)
+
+    await waitFor(() => {
+      expect(consoleSpy).toHaveBeenCalledWith('Position out of bounds, using fallback navigation', expect.any(Error))
+      // Should still attempt to scroll using fallback
+      expect(mockScrollTo).toHaveBeenCalled()
+    })
+
+    consoleSpy.mockRestore()
+  })
+
+  it('should handle fallback when coordsAtPos fails but document traversal succeeds', async () => {
+    const doc: JSONContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'heading',
+          attrs: { level: 1 },
+          content: [{ type: 'text', text: 'Fallback Heading' }]
+        }
+      ]
+    }
+
+    const mockEditor = createMockEditor(doc)
+    // Make initial coordsAtPos fail, but fallback coordsAtPos succeed
+    let callCount = 0
+    mockEditor.view.coordsAtPos.mockImplementation((pos: number) => {
+      callCount++
+      if (callCount === 1) {
+        throw new Error('Initial call fails')
+      }
+      return {
+        top: pos * 20,
+        left: 0,
+        right: 100,
+        bottom: pos * 20 + 20
+      }
+    })
+
+    const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {})
+
+    render(<ContentOutline editor={mockEditor as any} />)
+
+    const headingElement = screen.getByText('Fallback Heading')
+    fireEvent.click(headingElement)
+
+    await waitFor(() => {
+      expect(consoleSpy).toHaveBeenCalled()
+      expect(mockScrollTo).toHaveBeenCalled()
+      // Should have called coordsAtPos twice - once for initial attempt, once for fallback
+      expect(mockEditor.view.coordsAtPos).toHaveBeenCalledTimes(2)
+    })
+
+    consoleSpy.mockRestore()
+  })
+
+  it('should scroll to editor element when all else fails', async () => {
+    const doc: JSONContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'heading',
+          attrs: { level: 1 },
+          content: [{ type: 'text', text: 'Final Fallback' }]
+        }
+      ]
+    }
+
+    const mockEditor = createMockEditor(doc)
+    // Make all coordsAtPos calls fail
+    mockEditor.view.coordsAtPos.mockImplementation(() => {
+      throw new Error('All calls fail')
+    })
+
+    // The scrollIntoView mock is already set up in createMockEditor
+    const mockScrollIntoView = mockEditor.view.dom.scrollIntoView as jest.Mock
+
+    const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {})
+
+    render(<ContentOutline editor={mockEditor as any} />)
+
+    const headingElement = screen.getByText('Final Fallback')
+    fireEvent.click(headingElement)
+
+    await waitFor(() => {
+      expect(consoleSpy).toHaveBeenCalled()
+      expect(mockScrollIntoView).toHaveBeenCalledWith({
+        behavior: 'smooth',
+        block: 'start'
+      })
+    })
+
+    consoleSpy.mockRestore()
+  })
+
+  it('should not attempt to scroll when editor is null', () => {
+    render(<ContentOutline editor={null} />)
+    
+    // Should render empty outline without errors
+    expect(screen.queryByText('Test')).not.toBeInTheDocument()
+    expect(mockScrollTo).not.toHaveBeenCalled()
+  })
+
+  it('should scroll to correct positions for nested content', async () => {
+    const doc: JSONContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'heading',
+          attrs: { level: 1 },
+          content: [{ type: 'text', text: 'Main Section' }]
+        },
+        {
+          type: 'heading',
+          attrs: { level: 2 },
+          content: [{ type: 'text', text: 'Subsection' }]
+        },
+        {
+          type: 'taskList',
+          content: [
+            {
+              type: 'taskItem',
+              content: [
+                {
+                  type: 'paragraph',
+                  content: [{ type: 'text', text: 'p1 Nested task' }]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+
+    const mockEditor = createMockEditor(doc)
+    render(<ContentOutline editor={mockEditor as any} />)
+
+    // Expand the main section first
+    const mainSection = screen.getByText('Main Section')
+    const expandButton = mainSection.parentElement?.querySelector('.collapse-btn')
+    if (expandButton) {
+      fireEvent.click(expandButton)
+    }
+
+    await waitFor(() => {
+      // Should now see the subsection
+      expect(screen.getByText('Subsection')).toBeInTheDocument()
+    })
+
+    // Expand the subsection to see the task
+    const subsection = screen.getByText('Subsection')
+    const subExpandButton = subsection.parentElement?.querySelector('.collapse-btn')
+    if (subExpandButton) {
+      fireEvent.click(subExpandButton)
+    }
+
+    await waitFor(() => {
+      expect(screen.getByText('p1 Nested task')).toBeInTheDocument()
+    })
+
+    // Click on the nested task
+    const nestedTask = screen.getByText('p1 Nested task')
+    fireEvent.click(nestedTask)
+
+    await waitFor(() => {
+      expect(mockScrollTo).toHaveBeenCalled()
+      const callArgs = mockScrollTo.mock.calls[mockScrollTo.mock.calls.length - 1][0]
+      expect(callArgs.behavior).toBe('smooth')
+      expect(callArgs.top).toBeGreaterThanOrEqual(0)
+    })
+  })
+
+  it('should maintain smooth scrolling behavior for all scroll attempts', async () => {
+    const doc: JSONContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'heading',
+          attrs: { level: 1 },
+          content: [{ type: 'text', text: 'Smooth Scroll Test' }]
+        },
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text: 'Test paragraph' }]
+        }
+      ]
+    }
+
+    const mockEditor = createMockEditor(doc)
+    render(<ContentOutline editor={mockEditor as any} />)
+
+    // Click on heading
+    fireEvent.click(screen.getByText('Smooth Scroll Test'))
+    
+    await waitFor(() => {
+      expect(mockScrollTo).toHaveBeenCalledWith(
+        expect.objectContaining({ behavior: 'smooth' })
+      )
+    })
+
+    // Expand the heading section to see the paragraph
+    const heading = screen.getByText('Smooth Scroll Test')
+    const expandButton = heading.parentElement?.querySelector('.collapse-btn')
+    if (expandButton) {
+      fireEvent.click(expandButton)
+    }
+
+    await waitFor(() => {
+      expect(screen.getByText('Test paragraph')).toBeInTheDocument()
+    })
+
+    // Click on paragraph
+    fireEvent.click(screen.getByText('Test paragraph'))
+    
+    await waitFor(() => {
+      expect(mockScrollTo).toHaveBeenCalledWith(
+        expect.objectContaining({ behavior: 'smooth' })
+      )
+    })
+
+    // All calls should have smooth behavior
+    mockScrollTo.mock.calls.forEach(call => {
+      expect(call[0].behavior).toBe('smooth')
+    })
   })
 })

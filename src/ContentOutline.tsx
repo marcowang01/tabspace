@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react'
 import { Editor } from '@tiptap/core'
 import { JSONContent } from '@tiptap/react'
+import React, { useEffect, useMemo, useState } from 'react'
 import './ContentOutline.css'
 
 interface OutlineItem {
@@ -212,18 +212,16 @@ const ContentOutline: React.FC<ContentOutlineProps> = ({ editor }) => {
     
     try {
       // Get the view and scroll the position into view with some offset
-      // Note: We don't focus the editor to avoid affecting the outline display
       const view = editor.view
       const coords = view.coordsAtPos(position)
-      const editorElement = view.dom
-      const rect = editorElement.getBoundingClientRect()
       
-      // Calculate scroll position with a bit of offset from top
-      const scrollTop = window.pageYOffset || document.documentElement.scrollTop
-      const targetScroll = coords.top + scrollTop - rect.top - 100 // 100px offset from top
+      // Calculate the target scroll position
+      // coords.top is already relative to the viewport, so we just need to add current scroll
+      const currentScrollTop = window.pageYOffset || document.documentElement.scrollTop
+      const targetScroll = currentScrollTop + coords.top - 100 // 100px offset from top of viewport
       
       window.scrollTo({
-        top: targetScroll,
+        top: Math.max(0, targetScroll), // Ensure we don't scroll above the page
         behavior: 'smooth'
       })
     } catch (error) {
@@ -239,22 +237,19 @@ const ContentOutline: React.FC<ContentOutlineProps> = ({ editor }) => {
           foundPos = pos
         }
         nodeIndex++
-        // Stop after checking enough nodes
-        if (nodeIndex > position * 2) return false
+        // Stop after checking enough nodes to avoid infinite loops
+        if (nodeIndex > 100) return false
       })
       
       if (foundPos >= 0) {
         try {
           const view = editor.view
           const coords = view.coordsAtPos(foundPos)
-          const editorElement = view.dom
-          const rect = editorElement.getBoundingClientRect()
-          
-          const scrollTop = window.pageYOffset || document.documentElement.scrollTop
-          const targetScroll = coords.top + scrollTop - rect.top - 100
+          const currentScrollTop = window.pageYOffset || document.documentElement.scrollTop
+          const targetScroll = currentScrollTop + coords.top - 100
           
           window.scrollTo({
-            top: targetScroll,
+            top: Math.max(0, targetScroll),
             behavior: 'smooth'
           })
         } catch {
