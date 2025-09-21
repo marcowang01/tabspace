@@ -44,6 +44,14 @@ export function save(blocks: OutputData) {
   localStorage.setItem('blocks', JSON.stringify(blocks));
 };
 
+// Custom tag interface
+export interface CustomTag {
+  id: string,
+  tag: string,
+  color: string,
+  enabled: boolean,
+}
+
 // zustand related
 interface SettingsState {
   isDarkmode: boolean,
@@ -54,6 +62,10 @@ interface SettingsState {
   toggleFadeIn: () => void,
   enableTaskAnimation: boolean,
   toggleTaskAnimation: () => void,
+  customTags: CustomTag[],
+  addCustomTag: (tag: CustomTag) => void,
+  updateCustomTag: (id: string, tag: Partial<CustomTag>) => void,
+  deleteCustomTag: (id: string) => void,
 }
 
 export function loadDefault() {
@@ -70,9 +82,25 @@ export const useSettingsStore = create<SettingsState>()(persist(
     toggleFadeIn: () => set({ enableFadeIn: !get().enableFadeIn }),
     enableTaskAnimation: true,
     toggleTaskAnimation: () => set({ enableTaskAnimation: !get().enableTaskAnimation }),
+    customTags: [
+      { id: 'important', tag: 'important', color: '#ff6b6b', enabled: true },
+      { id: 'review', tag: 'review', color: '#4ecdc4', enabled: true },
+      { id: 'idea', tag: 'idea', color: '#f7b731', enabled: true }
+    ],
+    addCustomTag: (tag: CustomTag) => set(state => ({
+      customTags: [...state.customTags, tag]
+    })),
+    updateCustomTag: (id: string, updates: Partial<CustomTag>) => set(state => ({
+      customTags: state.customTags.map(tag =>
+        tag.id === id ? { ...tag, ...updates } : tag
+      )
+    })),
+    deleteCustomTag: (id: string) => set(state => ({
+      customTags: state.customTags.filter(tag => tag.id !== id)
+    })),
   }),
   {
-    version: 1,
+    version: 2,
     name: 'settings',
   }
 ))

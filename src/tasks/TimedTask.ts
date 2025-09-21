@@ -52,7 +52,7 @@ declare module '@tiptap/core' {
 
 export const TimedTask = Mark.create({
   name: 'timedTask',
-  exitable: false,
+  exitable: true,
   keepOnSplit: false,
   addAttributes() {
     return {

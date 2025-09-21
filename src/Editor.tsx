@@ -2,7 +2,7 @@ import React, { ClipboardEventHandler, DragEvent, useEffect, useRef } from 'reac
 import { useEditor, EditorContent } from '@tiptap/react'
 import { Editor as TiptapEditor } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
-import { load, save } from './storage';
+import { load, save, useSettingsStore } from './storage';
 import './Editor.scss';
 import Focus from '@tiptap/extension-focus';
 import Typography from '@tiptap/extension-typography';
@@ -10,6 +10,7 @@ import Blockquote from '@tiptap/extension-blockquote';
 import Image from '@tiptap/extension-image';
 import { TimedTask } from './tasks/TimedTask';
 import { PriorityMark } from './tasks/PriorityMark';
+import { CustomTagMark } from './tasks/CustomTagMark';
 import Placeholder from '@tiptap/extension-placeholder';
 import Link from '@tiptap/extension-link';
 import TaskItem from '@tiptap/extension-task-item';
@@ -48,6 +49,12 @@ function traverseMarks(editor: TiptapEditor, cb: (timedMark: Mark) => void) {
 
 const Editor = ({ setTasks }: IEditor) => {
   const positions = useRef<Map<string, DOMRect>>(new Map());
+  const customTags = useSettingsStore(state => state.customTags);
+  
+  // Create CustomTagMark configuration  
+  const customTagExtension = CustomTagMark.configure({
+    customTags: customTags
+  });
 
   const refreshPositions = (editor: TiptapEditor) => {
     const newPositions: Map<string, DOMRect> = new Map(positions.current);
@@ -122,6 +129,7 @@ const Editor = ({ setTasks }: IEditor) => {
       Image,
       TimedTask,
       PriorityMark,
+      customTagExtension,
       TaskList,
       TaskItem.configure({
         nested: true,
@@ -136,7 +144,7 @@ const Editor = ({ setTasks }: IEditor) => {
       refreshTasks(editor);
       save(editor.getJSON())
     }
-  });
+  }, [customTags]); // Re-create editor when custom tags change
 
   // @ts-ignore
   window['tabspace'] = {

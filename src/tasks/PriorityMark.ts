@@ -43,7 +43,7 @@ declare module '@tiptap/core' {
 
 export const PriorityMark = Mark.create({
   name: 'priorityMark',
-  exitable: false,
+  exitable: true,
   keepOnSplit: false,
   
   addAttributes() {
