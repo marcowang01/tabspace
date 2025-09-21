@@ -1,0 +1,17 @@
+{
+  "watch": ["src", "public"],
+  "ext": "js,jsx,ts,tsx,css,scss,json,html",
+  "ignore": [
+    "build/**",
+    "node_modules/**",
+    "*.test.*",
+    "*.spec.*"
+  ],
+  "delay": "1500",
+  "exec": "npm run build",
+  "events": {
+    "restart": "echo '🔨 Rebuilding extension...'",
+    "crash": "echo '❌ Build failed! Waiting for file changes...'",
+    "exit": "echo '✅ Build complete!'"
+  }
+}

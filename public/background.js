@@ -1,3 +1,26 @@
+// Hot reload functionality for development
+// This will only work when reload.txt exists (created by the watch script)
+let lastReloadTime = 0
+
+setInterval(async () => {
+  try {
+    const response = await fetch(chrome.runtime.getURL('reload.txt'))
+    if (response.ok) {
+      const timestamp = await response.text()
+      const currentTime = parseInt(timestamp)
+      
+      if (currentTime > lastReloadTime && lastReloadTime !== 0) {
+        console.log('🔄 Reloading extension due to file changes...')
+        chrome.runtime.reload()
+      }
+      
+      lastReloadTime = currentTime
+    }
+  } catch (error) {
+    // Ignore errors - reload.txt might not exist in production
+  }
+}, 2000)
+
 // Listen for keyboard shortcut command
 chrome.commands.onCommand.addListener((command) => {
   if (command === 'open-tabspace') {

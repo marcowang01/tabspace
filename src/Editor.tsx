@@ -15,6 +15,8 @@ import Link from '@tiptap/extension-link';
 import TaskItem from '@tiptap/extension-task-item';
 import { Mark } from 'prosemirror-model';
 import TaskList from '@tiptap/extension-task-list';
+import ContentOutline from './ContentOutline';
+import { CodeBlockWithCopy } from './extensions/CodeBlockWithCopy';
 
 export interface Tasks {
   due: number, // JS date in milliseconds past epoch
@@ -102,13 +104,10 @@ const Editor = ({ setTasks }: IEditor) => {
         heading: {
           levels: [1, 2, 3],
         },
-        codeBlock: {
-          HTMLAttributes: {
-            class: 'highlight'
-          }
-        },
+        codeBlock: false,
         blockquote: false,
       }),
+      CodeBlockWithCopy,
       Blockquote.extend({
         priority: 100
       }),
@@ -198,12 +197,17 @@ const Editor = ({ setTasks }: IEditor) => {
   }
 
   return (
-    <>
-      <EditorContent onDrop={handleDrop} editor={editor} onPaste={handlePaste} id="editor" />
-      <div className="newline-handle" onClick={handleInsertNewline}>
-        <p>+ Click here to insert a new line</p>
+    <div className="editor-container">
+      <div className="editor-main sidebar-expanded">
+        <EditorContent onDrop={handleDrop} editor={editor} onPaste={handlePaste} id="editor" />
+        <div className="newline-handle" onClick={handleInsertNewline}>
+          <p>+ Click here to insert a new line</p>
+        </div>
       </div>
-    </>
+      <ContentOutline 
+        editor={editor}
+      />
+    </div>
   )
 }
 

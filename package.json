@@ -12,6 +12,7 @@
     "@tiptap/extension-placeholder": "^2.8.0",
     "@tiptap/extension-task-item": "^2.8.0",
     "@tiptap/extension-task-list": "^2.8.0",
+    "@tiptap/extension-text-style": "^3.4.1",
     "@tiptap/extension-typography": "^2.8.0",
     "@tiptap/react": "^2.8.0",
     "@tiptap/starter-kit": "^2.8.0",
@@ -36,8 +37,13 @@
   },
   "scripts": {
     "dev": "react-scripts start",
-    "build": "INLINE_RUNTIME_CHUNK=false react-scripts build",
-    "build-ci": "react-scripts build"
+    "build": "cross-env INLINE_RUNTIME_CHUNK=false react-scripts build",
+    "build-ci": "react-scripts build",
+    "watch": "nodemon",
+    "watch:dev": "concurrently \"npm run watch\" \"node scripts/reload-extension.js\"",
+    "install-deps": "npm install",
+    "test": "react-scripts test",
+    "test:coverage": "react-scripts test --coverage --watchAll=false"
   },
   "eslintConfig": {
     "extends": [
@@ -57,7 +63,15 @@
     ]
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/react": "^15.0.7",
+    "@testing-library/user-event": "^14.6.1",
     "@types/d3-interpolate": "^3.0.1",
+    "@types/jest": "^30.0.0",
+    "concurrently": "^8.2.0",
+    "cross-env": "^7.0.3",
+    "jest-environment-jsdom": "^30.1.2",
+    "nodemon": "^3.0.1",
     "sass": "^1.55.0"
   }
 }

@@ -13,6 +13,13 @@ moddedChrono.refiners.push({
         result.start.assign('meridiem', 1);
         result.start.assign('hour', hour + 12);
       }
+
+      const year = result.start.get('year') || 0
+      if (!result.start.isCertain('year')) {
+        result.start.assign('year', new Date().getFullYear())
+      } else if (year < 100) {
+        result.start.assign('year', year + 2000)
+      }
     });
     return results;
   },
