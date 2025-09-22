@@ -1,23 +1,24 @@
-import React, { ClipboardEventHandler, DragEvent, useEffect, useRef } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react'
-import { Editor as TiptapEditor } from '@tiptap/core'
-import StarterKit from '@tiptap/starter-kit'
-import { load, save, useSettingsStore } from './storage';
-import './Editor.scss';
-import Focus from '@tiptap/extension-focus';
-import Typography from '@tiptap/extension-typography';
+import { Editor as TiptapEditor } from '@tiptap/core';
 import Blockquote from '@tiptap/extension-blockquote';
+import Focus from '@tiptap/extension-focus';
 import Image from '@tiptap/extension-image';
-import { TimedTask } from './tasks/TimedTask';
-import { PriorityMark } from './tasks/PriorityMark';
-import { CustomTagMark } from './tasks/CustomTagMark';
-import Placeholder from '@tiptap/extension-placeholder';
 import Link from '@tiptap/extension-link';
+import Placeholder from '@tiptap/extension-placeholder';
+import TableOfContentsExtension, { getHierarchicalIndexes } from '@tiptap/extension-table-of-contents';
 import TaskItem from '@tiptap/extension-task-item';
-import { Mark } from 'prosemirror-model';
 import TaskList from '@tiptap/extension-task-list';
-import ContentOutline from './ContentOutline';
+import Typography from '@tiptap/extension-typography';
+import { EditorContent, useEditor } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import { Mark } from 'prosemirror-model';
+import { ClipboardEventHandler, DragEvent, useEffect, useRef, useState } from 'react';
+import './Editor.scss';
 import { CodeBlockWithCopy } from './extensions/CodeBlockWithCopy';
+import { load, save, useSettingsStore } from './storage';
+import TableOfContents from './TableOfContents';
+import { CustomTagMark } from './tasks/CustomTagMark';
+import { PriorityMark } from './tasks/PriorityMark';
+import { TimedTask } from './tasks/TimedTask';
 
 export interface Tasks {
   due: number, // JS date in milliseconds past epoch
@@ -50,6 +51,7 @@ function traverseMarks(editor: TiptapEditor, cb: (timedMark: Mark) => void) {
 const Editor = ({ setTasks }: IEditor) => {
   const positions = useRef<Map<string, DOMRect>>(new Map());
   const customTags = useSettingsStore(state => state.customTags);
+  const [tocItems, setTocItems] = useState<any[]>([]);
   
   // Create CustomTagMark configuration  
   const customTagExtension = CustomTagMark.configure({
@@ -134,6 +136,14 @@ const Editor = ({ setTasks }: IEditor) => {
       TaskItem.configure({
         nested: true,
       }),
+      TableOfContentsExtension.configure({
+        anchorTypes: ['heading'],
+        getIndex: getHierarchicalIndexes,
+        scrollParent: () => window,
+        onUpdate: (content) => {
+          setTocItems(content)
+        },
+      }),
     ],
     content: load(),
     onCreate: ({ editor }) => refreshTasks(editor),
@@ -212,8 +222,9 @@ const Editor = ({ setTasks }: IEditor) => {
           <p>+ Click here to insert a new line</p>
         </div>
       </div>
-      <ContentOutline 
+      <TableOfContents 
         editor={editor}
+        items={tocItems}
       />
     </div>
   )
