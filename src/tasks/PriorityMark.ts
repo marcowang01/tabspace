@@ -69,7 +69,7 @@ export const PriorityMark = Mark.create({
       color: {
         default: DEFAULT_COLOR,
         renderHTML: attributes => ({
-          style: `background: ${attributes.color}; padding: 0.15em 0.3em; border-radius: 5px; font-weight: 600; text-transform: uppercase;`
+          style: `background: ${attributes.color};`
         })
       }
     }
@@ -86,6 +86,13 @@ export const PriorityMark = Mark.create({
         })
         return commands.insertContent(`${priority} `)
       }
+    }
+  },
+
+  addKeyboardShortcuts() {
+    return {
+      'Mod-p': () => this.editor.commands.setPriority(0),
+      'Mod-P': () => this.editor.commands.setPriority(0),
     }
   },
 
