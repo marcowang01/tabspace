@@ -1,10 +1,8 @@
 import * as chrono from "chrono-node";
-import { ParsingContext } from "chrono-node/dist/chrono";
-import { ParsingResult } from "chrono-node/dist/results";
 
 const moddedChrono = chrono.casual.clone();
 moddedChrono.refiners.push({
-  refine: (context: ParsingContext, results: ParsingResult[]) => {
+  refine: (context: chrono.ParsingContext, results: chrono.ParsingResult[]) => {
     // If there is no AM/PM (meridiem) specified,
     // usually PM
     results.forEach((result) => {

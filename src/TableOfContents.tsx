@@ -13,6 +13,12 @@ interface TocItem {
   pos: number
 }
 
+interface PriorityCounts {
+  p0: number
+  p1: number
+  p2: number
+}
+
 interface TableOfContentsProps {
   editor: Editor | null
   items: TocItem[]
@@ -20,6 +26,56 @@ interface TableOfContentsProps {
 
 const TableOfContents: React.FC<TableOfContentsProps> = ({ editor, items = [] }) => {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set())
+  
+  // Function to count priorities in a section and its children
+  const countPriorities = (item: TocItem & { children?: TocItem[] }): PriorityCounts => {
+    const counts: PriorityCounts = { p0: 0, p1: 0, p2: 0 }
+    
+    if (!editor) return counts
+    
+    try {
+      // Get the heading element
+      const headingElement = editor.view.dom.querySelector(`[data-toc-id="${item.id}"]`)
+      if (!headingElement) return counts
+      
+      // Find the next heading at the same or higher level to determine section boundary
+      let nextHeadingElement: Element | null = null
+      const allHeadings = Array.from(editor.view.dom.querySelectorAll('[data-toc-id]'))
+      const currentIndex = allHeadings.indexOf(headingElement)
+      
+      // Find the next heading that's at the same level or higher
+      for (let i = currentIndex + 1; i < allHeadings.length; i++) {
+        const heading = allHeadings[i]
+        const headingItem = items.find(it => it.id === heading.getAttribute('data-toc-id'))
+        if (headingItem && headingItem.level <= item.level) {
+          nextHeadingElement = heading
+          break
+        }
+      }
+      
+      // Get all priority marks in this section
+      const startPos = editor.view.posAtDOM(headingElement, 0)
+      const endPos = nextHeadingElement 
+        ? editor.view.posAtDOM(nextHeadingElement, 0)
+        : editor.state.doc.content.size
+      
+      // Count priority marks between startPos and endPos
+      editor.state.doc.nodesBetween(startPos, endPos, (node) => {
+        node.marks.forEach(mark => {
+          if (mark.type.name === 'priorityMark') {
+            const priority = mark.attrs.priority
+            if (priority === 'p0') counts.p0++
+            else if (priority === 'p1') counts.p1++
+            else if (priority === 'p2') counts.p2++
+          }
+        })
+      })
+    } catch (error) {
+      console.error('Failed to count priorities:', error)
+    }
+    
+    return counts
+  }
   
   const handleItemClick = (e: React.MouseEvent, item: TocItem) => {
     e.preventDefault()
@@ -110,6 +166,7 @@ const TableOfContents: React.FC<TableOfContentsProps> = ({ editor, items = [] })
     const isExpanded = expandedSections.has(item.id)
     const isActive = item.isActive && !item.isScrolledOver
     const isScrolledOver = item.isScrolledOver
+    const priorityCounts = countPriorities(item)
     
     return (
       <div key={item.id} className={`toc-item depth-${depth}`}>
@@ -138,9 +195,20 @@ const TableOfContents: React.FC<TableOfContentsProps> = ({ editor, items = [] })
           >
             <span className="toc-content">{item.textContent}</span>
           </a>
-          {hasChildren && (
-            <span className="child-count">{item.children?.length || 0}</span>
-          )}
+          <div className="toc-badges">
+            {priorityCounts.p0 > 0 && (
+              <span className="priority-badge priority-p0" title="P0 items">{priorityCounts.p0}</span>
+            )}
+            {priorityCounts.p1 > 0 && (
+              <span className="priority-badge priority-p1" title="P1 items">{priorityCounts.p1}</span>
+            )}
+            {priorityCounts.p2 > 0 && (
+              <span className="priority-badge priority-p2" title="P2 items">{priorityCounts.p2}</span>
+            )}
+            {hasChildren && (
+              <span className="child-count">{item.children?.length || 0}</span>
+            )}
+          </div>
         </div>
         {isExpanded && hasChildren && (
           <div className="toc-children">

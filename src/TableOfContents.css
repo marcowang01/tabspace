@@ -166,14 +166,59 @@
   color: #888;
 }
 
-.child-count {
-  background: #f5f5f5;
-  color: #999;
-  padding: 2px 6px;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 500;
+/* Badges container */
+.toc-badges {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   margin-left: auto;
+}
+
+/* Priority badges */
+.priority-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.priority-badge.priority-p0 {
+  background-color: #ff0000;
+  background: linear-gradient(135deg, #ff3333, #ff0000);
+}
+
+.priority-badge.priority-p1 {
+  background-color: #ff6600;
+  background: linear-gradient(135deg, #ff8833, #ff6600);
+}
+
+.priority-badge.priority-p2 {
+  background-color: #ffaa00;
+  background: linear-gradient(135deg, #ffbb33, #ffaa00);
+}
+
+/* Child count badge */
+.child-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 50%;
+  background-color: #999;
+  background: linear-gradient(135deg, #aaa, #888);
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .toc-children {
@@ -252,9 +297,23 @@
     color: #666;
   }
   
+  /* .toc-badges stays the same in dark mode */
+  
+  .priority-badge.priority-p0 {
+    background: linear-gradient(135deg, #ff4444, #cc0000);
+  }
+  
+  .priority-badge.priority-p1 {
+    background: linear-gradient(135deg, #ff7733, #dd5500);
+  }
+  
+  .priority-badge.priority-p2 {
+    background: linear-gradient(135deg, #ffbb44, #cc8800);
+  }
+  
   .child-count {
-    background: #333;
-    color: #999;
+    background: linear-gradient(135deg, #555, #333);
+    color: #ddd;
   }
   
   .toc-text.heading-level-1 {
