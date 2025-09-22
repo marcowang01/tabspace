@@ -143,9 +143,12 @@ export const PriorityMark = Mark.create({
     const transaction = this.editor.state.tr
     let changed = false
     
+    // Track all positions where we find priority patterns
+    const priorityRanges: Array<{start: number, end: number, priority: string, color: string}> = []
+    
+    // First pass: Find all priority patterns in the text
     this.editor.state.doc.descendants((node, pos) => {
       if (node.type.name === 'text' && node.text) {
-        // Find all priority patterns that are complete words
         const regex = /\b(p\d+)\b/gi
         let match
         
@@ -154,26 +157,72 @@ export const PriorityMark = Mark.create({
           const end = start + match[0].length
           const priority = match[1].toLowerCase()
           
-          // Check if this range already has our mark
-          let hasOurMark = false
-          this.editor.state.doc.nodesBetween(start, end, (node) => {
-            if (node.marks.some(mark => mark.type.name === this.name)) {
-              hasOurMark = true
-            }
+          priorityRanges.push({
+            start,
+            end,
+            priority,
+            color: calculatePriorityColor(priority)
           })
-          
-          // Only add mark if it doesn't already have one
-          if (!hasOurMark) {
-            const mark = this.type.create({
-              priority,
-              text: match[0],
-              uid: nanoid(),
-              color: calculatePriorityColor(priority)
-            })
-            transaction.addMark(start, end, mark)
-            changed = true
-          }
         }
+      }
+    })
+    
+    // Second pass: Remove marks that shouldn't exist or need updating
+    this.editor.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'text' && node.text) {
+        node.marks.forEach(mark => {
+          if (mark.type.name === this.name) {
+            const markStart = pos
+            const markEnd = pos + node.text!.length
+            
+            // Check if there's a matching priority range for this mark
+            const matchingRange = priorityRanges.find(range => 
+              range.start <= markStart && range.end >= markEnd
+            )
+            
+            if (!matchingRange) {
+              // No matching priority pattern, remove the mark
+              transaction.removeMark(markStart, markEnd, mark.type)
+              changed = true
+            } else if (matchingRange.priority !== mark.attrs.priority || 
+                      matchingRange.color !== mark.attrs.color) {
+              // Priority or color changed, update the mark
+              transaction.removeMark(markStart, markEnd, mark.type)
+              changed = true
+            }
+          }
+        })
+      }
+    })
+    
+    // Third pass: Add or update marks for all priority patterns
+    priorityRanges.forEach(range => {
+      // Check if this range already has the correct mark
+      let hasCorrectMark = false
+      let existingMarkUid = null
+      
+      this.editor.state.doc.nodesBetween(range.start, range.end, (node) => {
+        node.marks.forEach(mark => {
+          if (mark.type.name === this.name) {
+            if (mark.attrs.priority === range.priority && 
+                mark.attrs.color === range.color) {
+              hasCorrectMark = true
+            } else {
+              existingMarkUid = mark.attrs.uid
+            }
+          }
+        })
+      })
+      
+      if (!hasCorrectMark) {
+        const mark = this.type.create({
+          priority: range.priority,
+          text: range.priority,
+          uid: existingMarkUid || nanoid(),
+          color: range.color
+        })
+        transaction.addMark(range.start, range.end, mark)
+        changed = true
       }
     })
     
